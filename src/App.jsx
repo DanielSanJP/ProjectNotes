@@ -6,8 +6,9 @@ import {
 } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import PropTypes from "prop-types";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContextProvider";
 import { useAuth } from "./contexts/useAuth";
+import "./styles/App.css";
 
 // Pages
 import Login from "./components/Login";
@@ -20,12 +21,7 @@ import NoteDetails from "./components/NoteDetails";
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading...
-      </div>
-    );
+  if (loading) return <div className="loading-screen">Loading...</div>;
 
   if (!user) {
     return <Navigate to="/login" />;
@@ -41,37 +37,39 @@ ProtectedRoute.propTypes = {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Toaster position="top-right" />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/projects/:projectId"
-            element={
-              <ProtectedRoute>
-                <ProjectDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notes/:noteId"
-            element={
-              <ProtectedRoute>
-                <NoteDetails />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
+      <div className="app-wrapper">
+        <Router>
+          <Toaster position="top-right" />
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/projects/:projectId"
+              element={
+                <ProtectedRoute>
+                  <ProjectDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes/:noteId"
+              element={
+                <ProtectedRoute>
+                  <NoteDetails />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </div>
     </AuthProvider>
   );
 }

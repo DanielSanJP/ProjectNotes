@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getNote, updateNote, deleteNote } from "../services/projectService";
+import PageNavigation from "./PageNavigation";
+import SectionThumbnails from "./SectionThumbnails";
 import {
   getPageSections,
   createPageSection,
@@ -30,6 +32,8 @@ function NoteDetails() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [sectionImageUrls, setSectionImageUrls] = useState({});
+  const [currentPage, setCurrentPage] = useState(0);
+  const mainContentRef = useRef(null);
   const loadNoteAndSections = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -292,6 +296,98 @@ function NoteDetails() {
     }
   };
 
+  // Handle scroll events to update current page
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!mainContentRef.current) return;
+
+      const sections = document.querySelectorAll(".page-section-card-wrapper");
+      if (!sections.length) return;
+      const viewportHeight = mainContentRef.current.clientHeight;
+
+      // Find which section is most visible in the viewport
+      let maxVisibleSection = 0;
+      let maxVisibility = 0;
+
+      sections.forEach((section, index) => {
+        const rect = section.getBoundingClientRect();
+        const sectionTop = rect.top - mainContentRef.current.offsetTop;
+        const sectionBottom = rect.bottom - mainContentRef.current.offsetTop;
+
+        // Calculate how much of the section is visible
+        const visibleTop = Math.max(0, sectionTop);
+        const visibleBottom = Math.min(viewportHeight, sectionBottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+
+        if (visibleHeight > maxVisibility) {
+          maxVisibility = visibleHeight;
+          maxVisibleSection = index;
+        }
+      });
+
+      setCurrentPage(maxVisibleSection);
+    };
+
+    const content = mainContentRef.current;
+    if (content) {
+      content.addEventListener("scroll", handleScroll);
+      // Initialize current page
+      handleScroll();
+    }
+
+    return () => {
+      if (content) {
+        content.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [pageSections.length]);
+  // Navigate to specific page/section
+  const navigateToPage = useCallback((index) => {
+    setCurrentPage(index);
+  }, []);
+
+  // Navigate to previous page
+  const goToPrevPage = useCallback(() => {
+    setCurrentPage((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  // Navigate to next page
+  const goToNextPage = useCallback(() => {
+    const totalPages = pageSections.length + 1; // +1 for the "add new slide" button
+    setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
+  }, [pageSections.length]);
+  // Add keyboard navigation support
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't navigate if we're in an input, textarea or editing mode
+      if (
+        e.target.tagName === "INPUT" ||
+        e.target.tagName === "TEXTAREA" ||
+        document.querySelector(".page-section-card.editing")
+      ) {
+        return;
+      }
+
+      // Arrow Up or Page Up to navigate to previous page
+      if (e.key === "ArrowUp" || e.key === "PageUp") {
+        e.preventDefault();
+        goToPrevPage();
+      }
+
+      // Arrow Down or Page Down to navigate to next page
+      if (e.key === "ArrowDown" || e.key === "PageDown") {
+        e.preventDefault();
+        goToNextPage();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [goToPrevPage, goToNextPage]);
+
   if (isLoading) {
     return <div>Loading note...</div>;
   }
@@ -328,6 +424,9 @@ function NoteDetails() {
             >
               Edit
             </button>
+            <button onClick={openAddSectionModal} className="btn btn-primary">
+              Add Section
+            </button>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
               className="btn btn-danger"
@@ -335,48 +434,107 @@ function NoteDetails() {
               Delete
             </button>
           </div>
-        </div>
+        </div>{" "}
       </header>
+      <main className="powerpoint-layout" ref={mainContentRef}>
+        {/* Thumbnails sidebar */}
+        <SectionThumbnails
+          sections={pageSections.map((section) => ({
+            ...section,
+            imageUrl: sectionImageUrls[section.id] || section.image_path,
+          }))}
+          currentPage={currentPage}
+          onPageSelect={navigateToPage}
+          addNewSection={quickAddSection}
+        />
 
-      <main className="main-content">
-        <div>
-          <div className="section-header">
-            <h2 className="section-title">Page Sections</h2>
-            <button onClick={openAddSectionModal} className="btn btn-primary">
-              Add Page Section
-            </button>
-          </div>{" "}
-          {pageSections.length === 0 ? (
-            <div className="empty-state">
-              <p className="empty-state-message">
-                No page sections yet. Add your first page section to get
-                started.
-              </p>
-              <button onClick={quickAddSection} className="btn btn-primary">
-                Add your first page section
-              </button>
+        {/* Main presentation area */}
+        <div className="presentation-area">
+          {/* Top toolbar */}
+          <div className="presentation-toolbar">
+            <div className="slide-title">
+              {pageSections.length > 0 && currentPage < pageSections.length
+                ? pageSections[currentPage].page_name
+                : currentPage === pageSections.length
+                ? "Add New Slide"
+                : ""}
             </div>
-          ) : (
-            <div className="page-sections-grid">
-              <div className="new-section-card" onClick={quickAddSection}>
-                <div className="new-section-icon">+</div>
-                <div className="new-section-text">Add Page Section</div>
+          </div>
+
+          {/* Main slides container */}
+          <div className="slides-container">
+            {pageSections.length === 0 ? (
+              <div className="empty-state">
+                <p className="empty-state-message">
+                  No slides yet. Add your first slide to get started.
+                </p>
+                <button
+                  onClick={openAddSectionModal}
+                  className="btn btn-primary"
+                >
+                  Add your first slide
+                </button>
               </div>
-              {pageSections.map((section) => (
-                <EditablePageSection
-                  key={section.id}
-                  section={section}
-                  imageUrl={sectionImageUrls[section.id] || section.image_path}
-                  onUpdate={handleUpdateSection}
-                  onDelete={handleDeleteSection}
-                  noteId={noteId}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+            ) : (
+              <>
+                {pageSections.map((section, index) => (
+                  <div
+                    key={section.id}
+                    data-section-index={index + 1}
+                    className={`slide ${
+                      index === currentPage
+                        ? "active"
+                        : index < currentPage
+                        ? "prev"
+                        : ""
+                    }`}
+                  >
+                    <div className="slide-content-wrapper">
+                      <EditablePageSection
+                        section={section}
+                        imageUrl={
+                          sectionImageUrls[section.id] || section.image_path
+                        }
+                        onUpdate={handleUpdateSection}
+                        onDelete={handleDeleteSection}
+                        noteId={noteId}
+                        sectionIndex={index + 1}
+                      />
+                    </div>
+                  </div>
+                ))}
 
+                {/* Add new section slide */}
+                <div
+                  className={`slide ${
+                    currentPage === pageSections.length ? "active" : ""
+                  }`}
+                  data-section-index={pageSections.length + 1}
+                >
+                  <div className="slide-content-wrapper">
+                    <div className="new-section-card" onClick={quickAddSection}>
+                      <div className="new-section-icon">+</div>
+                      <div className="new-section-text">Add New Slide</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}{" "}
+          </div>
+        </div>
+        {/* Mobile navigation controls (only shown when there are sections) */}
+        {pageSections.length > 0 && (
+          <div className="mobile-controls">
+            <PageNavigation
+              currentPage={currentPage}
+              totalPages={pageSections.length + 1}
+              navigateToPage={navigateToPage}
+              goToPrevPage={goToPrevPage}
+              goToNextPage={goToNextPage}
+            />
+          </div>
+        )}
+      </main>
       {/* Edit Note Modal */}
       {isEditModalOpen && (
         <div className="modal-overlay">
@@ -424,7 +582,6 @@ function NoteDetails() {
           </div>
         </div>
       )}
-
       {/* Delete Note Modal */}
       {isDeleteModalOpen && (
         <div className="modal-overlay">
@@ -432,7 +589,7 @@ function NoteDetails() {
             <h3 className="modal-title">Delete Note</h3>
             <p className="form-group">
               Are you sure you want to delete this note? This action cannot be
-              undone and all page sections will be permanently deleted.
+              undone and all sections will be permanently deleted.
             </p>
             <div className="modal-footer">
               <button
@@ -453,18 +610,17 @@ function NoteDetails() {
           </div>
         </div>
       )}
-
       {/* Add/Edit Section Modal */}
       {isSectionModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
             <h3 className="modal-title">
-              {editingSectionId ? "Edit Page Section" : "Add Page Section"}
+              {editingSectionId ? "Edit Section" : "Add Section"}
             </h3>
             <form onSubmit={handleSaveSection}>
               <div className="form-group">
                 <label htmlFor="page-name" className="form-label">
-                  Page Name
+                  Section Name
                 </label>
                 <input
                   type="text"
@@ -485,7 +641,7 @@ function NoteDetails() {
                   value={pageDescription}
                   onChange={(e) => setPageDescription(e.target.value)}
                   rows={4}
-                  placeholder="Describe the purpose and function of this page section"
+                  placeholder="Describe the purpose and function of this section"
                   className="form-textarea"
                 />
               </div>
@@ -527,6 +683,7 @@ function NoteDetails() {
           </div>
         </div>
       )}
+      {/* Pagination Controls */}
     </div>
   );
 }
