@@ -117,6 +117,7 @@
 .project-created-date {
   font-size: var(--font-size-xs);
   color: var(--color-text-light);
+  text-align: center;
 }
 
 .project-card-footer {
