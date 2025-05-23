@@ -128,8 +128,8 @@ function ProjectDetails() {
                 </svg>
                 Back to Dashboard
               </Link>
-              <h1 className="project-title">{project.title}</h1>
             </div>
+            <h1 className="project-title">{project.title}</h1>
             {project.description && (
               <p className="project-description">{project.description}</p>
             )}

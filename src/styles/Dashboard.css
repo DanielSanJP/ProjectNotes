@@ -240,5 +240,59 @@
 @media (max-width: 768px) {
   .projects-grid {
     grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .header-buttons {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .section-title {
+    font-size: var(--font-size-md);
+  }
+
+  .modal {
+    width: 95%;
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .projects-grid {
+    gap: var(--spacing-sm);
+  }
+
+  .project-card-content {
+    padding: var(--spacing-md);
+  }
+
+  .btn {
+    padding: var(--spacing-xs) var(--spacing-xs);
+    font-size: calc(var(--font-size-xs) - 0.1rem);
+  }
+
+  .header-buttons {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+  }
+
+  .new-project-card {
+    height: 150px;
+  }
+
+  .project-title {
+    font-size: var(--font-size-md);
+  }
+
+  .modal-title {
+    font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-sm);
   }
 }

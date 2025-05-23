@@ -104,3 +104,33 @@
   color: #4338ca;
   text-decoration: underline;
 }
+
+/* Responsive styles for login/signup */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 1.5rem;
+    max-width: 95%;
+  }
+
+  .auth-title {
+    font-size: 1.5rem;
+  }
+
+  .auth-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-form {
+    gap: 1rem;
+  }
+
+  .form-input {
+    padding: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .auth-btn {
+    padding: 0.5rem;
+  }
+}

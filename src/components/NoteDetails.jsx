@@ -34,6 +34,13 @@ function NoteDetails() {
   const [sectionImageUrls, setSectionImageUrls] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
   const mainContentRef = useRef(null);
+  // For touch swipe tracking
+  const touchStartRef = useRef(null);
+  const touchEndRef = useRef(null);
+  const isEditingRef = useRef(false);
+  const slidesContainerRef = useRef(null);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
+
   const loadNoteAndSections = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -388,6 +395,92 @@ function NoteDetails() {
     };
   }, [goToPrevPage, goToNextPage]);
 
+  // Touch swipe navigation for mobile devices
+  useEffect(() => {
+    const handleTouchStart = (e) => {
+      // Store the initial touch position
+      touchStartRef.current = e.touches[0].clientY;
+
+      // Reset the end position on new touch
+      touchEndRef.current = null;
+
+      // Check if we're in editing mode
+      isEditingRef.current = !!document.querySelector(
+        ".page-section-card.editing"
+      );
+    };
+
+    const handleTouchMove = (e) => {
+      // If no start position or we're editing something, don't process swipe
+      if (!touchStartRef.current || isEditingRef.current) return;
+
+      // Store the current touch position
+      touchEndRef.current = e.touches[0].clientY;
+
+      // Optional: provide visual feedback during the swipe (uncomment if you want this feature)
+      // const touchDiff = touchEndRef.current - touchStartRef.current;
+      // const activeSlide = document.querySelector('.slide.active');
+      // if (activeSlide && Math.abs(touchDiff) > 10) {
+      //   const opacity = Math.max(0.7, 1 - Math.abs(touchDiff) / 300);
+      //   activeSlide.style.opacity = opacity;
+      // }
+    };
+    const handleTouchEnd = () => {
+      // If no start or end position, or we're editing, don't process swipe
+      if (
+        !touchStartRef.current ||
+        !touchEndRef.current ||
+        isEditingRef.current
+      ) {
+        // Reset for next swipe
+        touchStartRef.current = null;
+        touchEndRef.current = null;
+        return;
+      }
+
+      const touchDiff = touchEndRef.current - touchStartRef.current;
+      const minSwipeDistance = 50; // Minimum distance to be considered a swipe
+
+      // Hide the swipe hint once the user starts swiping
+      if (showSwipeHint) {
+        setShowSwipeHint(false);
+      }
+
+      // Swiping down (positive difference) - go to previous slide
+      if (touchDiff > minSwipeDistance) {
+        goToPrevPage();
+      }
+
+      // Swiping up (negative difference) - go to next slide
+      if (touchDiff < -minSwipeDistance) {
+        goToNextPage();
+      }
+
+      // Reset for next swipe
+      touchStartRef.current = null;
+      touchEndRef.current = null;
+    }; // Add touch event listeners to the slides container
+    const container = slidesContainerRef.current;
+    if (container) {
+      container.addEventListener("touchstart", handleTouchStart, {
+        passive: true,
+      });
+      container.addEventListener("touchmove", handleTouchMove, {
+        passive: true,
+      });
+      container.addEventListener("touchend", handleTouchEnd);
+    }
+
+    // Clean up event listeners on unmount
+    return () => {
+      if (container) {
+        container.removeEventListener("touchstart", handleTouchStart);
+        container.removeEventListener("touchmove", handleTouchMove);
+        container.removeEventListener("touchend", handleTouchEnd);
+      }
+    };
+  }, [goToPrevPage, goToNextPage, showSwipeHint]);
+
   if (isLoading) {
     return <div>Loading note...</div>;
   }
@@ -413,8 +506,8 @@ function NoteDetails() {
                 </svg>
                 Back to Project
               </Link>
-              <h1 className="note-title">{note.title}</h1>
             </div>
+            <h1 className="note-title">{note.title}</h1>
             {note.summary && <p className="note-summary">{note.summary}</p>}
           </div>
           <div className="header-buttons">
@@ -447,7 +540,6 @@ function NoteDetails() {
           onPageSelect={navigateToPage}
           addNewSection={quickAddSection}
         />
-
         {/* Main presentation area */}
         <div className="presentation-area">
           {/* Top toolbar */}
@@ -460,20 +552,16 @@ function NoteDetails() {
                 : ""}
             </div>
           </div>
-
-          {/* Main slides container */}
-          <div className="slides-container">
+          {/* Main slides container */}{" "}
+          <div className="slides-container" ref={slidesContainerRef}>
             {pageSections.length === 0 ? (
-              <div className="empty-state">
-                <p className="empty-state-message">
-                  No slides yet. Add your first slide to get started.
-                </p>
-                <button
-                  onClick={openAddSectionModal}
-                  className="btn btn-primary"
-                >
-                  Add your first slide
-                </button>
+              <div className="slide active" data-section-index="1">
+                <div className="slide-content-wrapper">
+                  <div className="new-section-card" onClick={quickAddSection}>
+                    <div className="new-section-icon">+</div>
+                    <div className="new-section-text">Add New Slide</div>
+                  </div>
+                </div>
               </div>
             ) : (
               <>
@@ -532,6 +620,26 @@ function NoteDetails() {
               goToPrevPage={goToPrevPage}
               goToNextPage={goToNextPage}
             />
+          </div>
+        )}{" "}
+        {/* Mobile swipe hint - only shown initially on mobile */}
+        {pageSections.length > 0 && showSwipeHint && (
+          <div className="swipe-hint">
+            <div className="swipe-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                width="24"
+                height="24"
+              >
+                <path
+                  d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"
+                  transform="rotate(90 12 12)"
+                />
+              </svg>
+            </div>
+            <div className="swipe-text">Swipe up/down to navigate</div>
           </div>
         )}
       </main>
